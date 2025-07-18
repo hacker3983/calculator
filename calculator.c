@@ -81,10 +81,10 @@ bool isoperator(char* string) {
 	return false;
 }
 
-void inputbox_clear(char** input_text, size_t* input_textlen) {
-	free((*input_text));
-	*input_text = NULL;
-	*input_textlen = 0;
+void string_clear(char** string, size_t* string_len) {
+	free((*string));
+	*string = NULL;
+	*string_len = 0;
 }
 
 size_t get_numlength(long num) {
@@ -120,6 +120,19 @@ char* eval_exprtostr(int num1, char operator, int num2,
 	return result_str;
 }
 
+void pop_str(char** string, size_t* string_len) {
+	if(!(*string)) {
+		return;
+	}
+	(*string_len)--;
+	if(!(*string_len)) {
+		string_clear(string, string_len);
+		return;
+	}
+	(*string) = realloc(*string, (*string_len)+1);
+	(*string)[(*string_len)] = '\0';
+}
+
 int main() {
 	SDL_Init(SDL_INIT_VIDEO);
 	TTF_Init();
@@ -141,10 +154,11 @@ int main() {
 	SDL_Color inputbox_color = {0x00, 0xff, 0x00, 0xff},
 		  input_textcolor = {0xff, 0xff, 0xff, 0xff};
 	button_t buttons[] = {
-		{"7"}, {"8"}, {"9"}, {"+"},
-		{"4"}, {"5"}, {"6"}, {"-"},
-		{"1"}, {"2"}, {"3"}, {"/"},
-		{"Clear"}, {"0"},  {"="}, {"*"}
+		{"7"}, {"8"}, {"9"}, {"X"},
+		{"4"}, {"5"}, {"6"}, {"+"},
+		{"1"}, {"2"}, {"3"}, {"-"},
+		{"Clear"}, {"0"}, {"/"}, {"*"},
+		{"="}
 	};
 	int nums[2] = {0};
 	size_t num_index = 0;
@@ -183,9 +197,9 @@ int main() {
 		
 		int start_x = 0, start_y = inputbox.y + inputbox.h,
 			max_button_w = win_w / 4,
-			max_button_h = (win_h - (inputbox.y + inputbox.h)) / 4;
+			max_button_h = (win_h - (inputbox.y + inputbox.h)) / 5;
 		int count = 0;
-		for(size_t i=0;i<button_count;i++) {
+		for(size_t i=0;i<button_count-1;i++) {
 			SDL_Rect *canvas = &buttons[i].canvas,
 				 *text_canvas = &buttons[i].text_canvas;
 			canvas->x = start_x, canvas->y = start_y;
@@ -201,13 +215,22 @@ int main() {
 			}
 			start_x += max_button_w;
 		}
+		SDL_Rect *equal_signcanvas = &buttons[button_count-1].canvas,
+			 *equal_textcanvas = &buttons[button_count-1].text_canvas;
+		equal_signcanvas->w = win_w - 5, equal_signcanvas->h = max_button_h - 5;
+		equal_signcanvas->x = (win_w - equal_signcanvas->w) / 2,
+		equal_signcanvas->y = start_y;
+		equal_textcanvas->x = equal_signcanvas->x + (equal_signcanvas->w -
+			equal_textcanvas->w) / 2,
+		equal_textcanvas->y = equal_signcanvas->y + (equal_signcanvas->h -
+			equal_textcanvas->h) / 2;
 		render_buttons(renderer, mouse_x, mouse_y, mouse_clicked, buttons, button_count);
 		for(size_t i=0;i<button_count;i++) {
 			if(isdigit(buttons[i].text[0]) && buttons[i].clicked) {
 				if(!num_index && result_ready) {
 					nums[0] = atoi(input_text);
 					num_index = 1;
-					inputbox_clear(&input_text, &input_textlen);
+					string_clear(&input_text, &input_textlen);
 					result_ready = false;
 				}
 				appendstr(&input_text, &input_textlen, buttons[i].text);
@@ -215,22 +238,30 @@ int main() {
 			} else if(isoperator(buttons[i].text) && buttons[i].clicked) {
 				num_index = (num_index + 1) % 2;
 				if(!num_index) {
-					inputbox_clear(&input_text, &input_textlen);
+					string_clear(&input_text, &input_textlen);
 					input_text = eval_exprtostr(nums[0], operator, nums[1], &input_textlen);
 					result_ready = true;
 				} else if(num_index == 1) {
-					inputbox_clear(&input_text, &input_textlen);
+					string_clear(&input_text, &input_textlen);
 				}
 				operator = buttons[i].text[0];
 			} else if(strcmp(buttons[i].text, "=") == 0 && buttons[i].clicked) {
 				eval = true;
 			} else if(strcmp(buttons[i].text, "Clear") == 0 && buttons[i].clicked) {
+				string_clear(&input_text, &input_textlen);
+				result_ready = false;
+				num_index = 0;
 				eval = false;
+			} else if(strcmp(buttons[i].text, "X") == 0 && buttons[i].clicked) {
+				pop_str(&input_text, &input_textlen);
+				if(input_text) {
+					nums[num_index] = atoi(input_text);
+				}
 			}
 			buttons[i].clicked = false;
 		}
 		if(eval && num_index == 1) {
-			inputbox_clear(&input_text, &input_textlen);
+			string_clear(&input_text, &input_textlen);
 			input_text = eval_exprtostr(nums[0], operator, nums[1], &input_textlen);
 			nums[0] = atoi(input_text);
 			num_index = 0;
@@ -250,7 +281,7 @@ int main() {
 		SDL_RenderPresent(renderer);
 		eval = false;
 	}
-	inputbox_clear(&input_text, &input_textlen);
+	string_clear(&input_text, &input_textlen);
 	SDL_DestroyWindow(window);
 	SDL_DestroyRenderer(renderer);
 	TTF_CloseFont(font);

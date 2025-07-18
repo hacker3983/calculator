@@ -22,4 +22,5 @@ chmod +x build.sh && ./build.sh
 
 # Screenshots
 <image src="Screenshots/Screenshot 2025-07-18 131309.png"><br>
-<image src="Screenshots/Screenshot 2025-07-18 141906.png">
+<image src="Screenshots/Screenshot 2025-07-18 141906.png"><br>
+<image src="Screenshots/Screenshot 2025-07-18 145951.png">
