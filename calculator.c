@@ -146,14 +146,12 @@ int main() {
 		{"1"}, {"2"}, {"3"}, {"/"},
 		{"Clear"}, {"0"},  {"="}, {"*"}
 	};
-	bool num1_set = false, num2_set = false;
-	int num1 = 0, num2 = 0;
-	long result = 0;
-	bool eval = false;
+	int nums[2] = {0};
+	size_t num_index = 0;
+	bool eval = false, result_ready = false;
 	char operator = '\0';
 	size_t button_count = sizeof(buttons) / sizeof(button_t);
 	for(size_t i=0;i<button_count;i++) {
-		printf("Rendering button %s\n", buttons[i].text);
 		buttons[i].font = font;
 		buttons[i].font_size = font_size;
 		buttons[i].color = (SDL_Color){0};
@@ -206,41 +204,36 @@ int main() {
 		render_buttons(renderer, mouse_x, mouse_y, mouse_clicked, buttons, button_count);
 		for(size_t i=0;i<button_count;i++) {
 			if(isdigit(buttons[i].text[0]) && buttons[i].clicked) {
-				appendstr(&input_text, &input_textlen, buttons[i].text);
-				if(!num1_set) {
-					num1 = atoi(input_text);
-				} else {
-					num2 = atoi(input_text);
-					num2_set = true;
-				}
-			} else if(isoperator(buttons[i].text) && buttons[i].clicked) {
-				if(num1_set && num2_set) {
+				if(!num_index && result_ready) {
+					nums[0] = atoi(input_text);
+					num_index = 1;
 					inputbox_clear(&input_text, &input_textlen);
-					input_text = eval_exprtostr(num1, operator, num2, &input_textlen);
-					num1 = atoi(input_text);
-					num1_set = true;
-					num2_set = false;
-				} else if(input_text && !num1_set) {
-					num1_set = true;
+					result_ready = false;
+				}
+				appendstr(&input_text, &input_textlen, buttons[i].text);
+				nums[num_index] = atoi(input_text);
+			} else if(isoperator(buttons[i].text) && buttons[i].clicked) {
+				num_index = (num_index + 1) % 2;
+				if(!num_index) {
+					inputbox_clear(&input_text, &input_textlen);
+					input_text = eval_exprtostr(nums[0], operator, nums[1], &input_textlen);
+					result_ready = true;
+				} else if(num_index == 1) {
 					inputbox_clear(&input_text, &input_textlen);
 				}
 				operator = buttons[i].text[0];
 			} else if(strcmp(buttons[i].text, "=") == 0 && buttons[i].clicked) {
 				eval = true;
 			} else if(strcmp(buttons[i].text, "Clear") == 0 && buttons[i].clicked) {
-				inputbox_clear(&input_text, &input_textlen);
-				num1_set = false;
 				eval = false;
 			}
 			buttons[i].clicked = false;
 		}
-		if(eval && num1_set && num2_set) {
+		if(eval && num_index == 1) {
 			inputbox_clear(&input_text, &input_textlen);
-			input_text = eval_exprtostr(num1, operator, num2, &input_textlen);
-			num1 = atoi(input_text);
-			num1_set = true;
-			num2_set = false;
-			eval = false;
+			input_text = eval_exprtostr(nums[0], operator, nums[1], &input_textlen);
+			nums[0] = atoi(input_text);
+			num_index = 0;
 		}
 		if(input_text) {
 			TTF_SetFontSize(font, font_size);
@@ -255,7 +248,9 @@ int main() {
 		}
 		mouse_clicked = false;
 		SDL_RenderPresent(renderer);
+		eval = false;
 	}
+	inputbox_clear(&input_text, &input_textlen);
 	SDL_DestroyWindow(window);
 	SDL_DestroyRenderer(renderer);
 	TTF_CloseFont(font);
