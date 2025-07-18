@@ -256,6 +256,8 @@ int main() {
 				pop_str(&input_text, &input_textlen);
 				if(input_text) {
 					nums[num_index] = atoi(input_text);
+				} else {
+					result_ready = false;
 				}
 			}
 			buttons[i].clicked = false;
